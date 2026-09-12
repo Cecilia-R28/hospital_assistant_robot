@@ -22,16 +22,85 @@ class RobotSupervisor(Node):
 
         self.current_state = RobotState.IDLE
 
-        self.subscription = self.create_subscription(
+        # Reçoit l'état réel du robot
+        self.status_subscription = self.create_subscription(
             String,
             '/robot/status',
             self.status_callback,
             10
         )
 
+        # Reçoit les commandes du système
+        self.command_subscription = self.create_subscription(
+            String,
+            '/robot/command',
+            self.command_callback,
+            10
+        )
+
         self.get_logger().info(
             'HIAR Robot Supervisor started'
         )
+
+        self.get_logger().info(
+            f'Initial state: {self.current_state.value}'
+        )
+
+    def command_callback(self, message):
+
+        command = message.data.strip().upper()
+
+        self.get_logger().info(
+            f'Received command: {command}'
+        )
+
+        # Commandes de déplacement
+        movement_commands = {
+            'FORWARD',
+            'BACKWARD',
+            'LEFT',
+            'RIGHT'
+        }
+
+        if command in movement_commands:
+
+            # On ne lance pas un mouvement si le robot
+            # est en arrêt d'urgence ou en erreur.
+            if self.current_state in (
+                RobotState.EMERGENCY_STOP,
+                RobotState.ERROR
+            ):
+                self.get_logger().warn(
+                    f'Command {command} rejected because '
+                    f'robot state is {self.current_state.value}'
+                )
+                return
+
+            self.current_state = RobotState.NAVIGATING
+
+            self.get_logger().info(
+                f'Robot state changed to: '
+                f'{self.current_state.value}'
+            )
+
+        elif command == 'STOP':
+
+            self.current_state = RobotState.IDLE
+
+            self.get_logger().info(
+                'STOP command received.'
+            )
+
+            self.get_logger().info(
+                f'Robot state changed to: '
+                f'{self.current_state.value}'
+            )
+
+        else:
+
+            self.get_logger().warn(
+                f'Unknown command: {command}'
+            )
 
     def status_callback(self, message):
 
@@ -42,48 +111,64 @@ class RobotSupervisor(Node):
         )
 
         if status == RobotState.IDLE.value:
+
             self.current_state = RobotState.IDLE
+
             self.get_logger().info(
                 'Robot is ready and waiting for a task.'
             )
 
         elif status == RobotState.WAITING.value:
+
             self.current_state = RobotState.WAITING
+
             self.get_logger().info(
                 'Robot is waiting for an instruction.'
             )
 
         elif status == RobotState.NAVIGATING.value:
+
             self.current_state = RobotState.NAVIGATING
+
             self.get_logger().info(
                 'Robot is navigating.'
             )
 
         elif status == RobotState.ARRIVED.value:
+
             self.current_state = RobotState.ARRIVED
+
             self.get_logger().info(
                 'Robot has arrived at the destination.'
             )
 
         elif status == RobotState.OBSTACLE.value:
+
             self.current_state = RobotState.OBSTACLE
+
             self.get_logger().warn(
-                'Obstacle detected! Robot must stop or avoid it.'
+                'Obstacle detected! '
+                'Robot must stop or avoid it.'
             )
 
         elif status == RobotState.EMERGENCY_STOP.value:
+
             self.current_state = RobotState.EMERGENCY_STOP
+
             self.get_logger().error(
                 'EMERGENCY STOP activated!'
             )
 
         elif status == RobotState.ERROR.value:
+
             self.current_state = RobotState.ERROR
+
             self.get_logger().error(
                 'Robot entered ERROR state.'
             )
 
         else:
+
             self.get_logger().warn(
                 f'Unknown robot status: {status}'
             )

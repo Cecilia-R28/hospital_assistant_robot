@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'robot_status = hospital_robot.robot_status_node:main',
             'robot_supervisor = hospital_robot.robot_supervisor:main',
+            'esp32_interface = hospital_robot.esp32_interface_node:main',
         ],
     },
 )
