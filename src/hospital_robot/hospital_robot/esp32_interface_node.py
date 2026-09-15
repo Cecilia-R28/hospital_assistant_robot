@@ -53,6 +53,7 @@ class ESP32Interface(Node):
         )
 
     def command_callback(self, message):
+
         command = message.data.strip().upper()
 
         allowed_commands = [
@@ -76,6 +77,7 @@ class ESP32Interface(Node):
             return
 
         try:
+            # Envoi de la commande à l'ESP32
             self.serial_connection.write(
                 f'{command}\n'.encode('utf-8')
             )
@@ -84,9 +86,11 @@ class ESP32Interface(Node):
                 f'Sent to ESP32: {command}'
             )
 
+            # Attente de la réponse de l'ESP32
             response = self.serial_connection.readline()
 
             if response:
+
                 response = response.decode(
                     'utf-8',
                     errors='replace'
@@ -96,19 +100,51 @@ class ESP32Interface(Node):
                     f'ESP32 response: {response}'
                 )
 
-                status_message = String()
-                status_message.data = response
+                # Réponse attendue
+                expected_response = f'ACK:{command}'
 
-                self.status_publisher.publish(
-                    status_message
+                # Vérification de l'ACK
+                if response == expected_response:
+
+                    self.get_logger().info(
+                        f'Command confirmed by ESP32: {command}'
+                    )
+
+                    status_message = String()
+                    status_message.data = response
+
+                    self.status_publisher.publish(
+                        status_message
+                    )
+
+                else:
+
+                    self.get_logger().error(
+                        f'Unexpected ESP32 response: {response}. '
+                        f'Expected: {expected_response}'
+                    )
+
+            else:
+
+                self.get_logger().error(
+                    f'No response from ESP32 for command: {command}'
                 )
 
         except serial.SerialException as error:
+
             self.get_logger().error(
                 f'Serial communication error: {error}'
             )
 
+            self.get_logger().error(
+                'Communication with ESP32 lost. '
+                'Robot must STOP.'
+            )
+
+            self.close_serial_connection()
+
     def close_serial_connection(self):
+
         if self.serial_connection is not None:
 
             try:
@@ -119,6 +155,7 @@ class ESP32Interface(Node):
                 )
 
             except serial.SerialException as error:
+
                 self.get_logger().error(
                     f'Error while closing serial connection: {error}'
                 )
@@ -137,11 +174,13 @@ def main(args=None):
         rclpy.spin(node)
 
     except KeyboardInterrupt:
+
         node.get_logger().info(
             'ESP32 interface node stopped by user.'
         )
 
     finally:
+
         node.close_serial_connection()
         node.destroy_node()
 
