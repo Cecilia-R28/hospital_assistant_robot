@@ -19,3 +19,24 @@ h2 { font-size: 1.8rem; margin: 8px 0 24px; }
   background: white; color: #1f6feb;
 }
 .debug { font-family: monospace; font-size: 0.9rem; color: #777; word-break: break-all; }
+
+/* Mode paysage : téléphone à l'horizontale */
+@media (orientation: landscape) and (max-height: 600px) {
+  body { padding: 10px 16px; }
+  main { max-width: 900px; }
+  h1 { font-size: 1.6rem; margin: 2px 0; }
+  h2 { font-size: 1.3rem; margin: 2px 0 10px; }
+  .subtitle { font-size: 1.05rem; margin-bottom: 10px; }
+  .screen.active {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .screen.active > h1,
+  .screen.active > h2,
+  .screen.active > .subtitle,
+  .screen.active > .debug,
+  .screen.active > .back-button { grid-column: 1 / -1; }
+  .big-button { margin: 0; padding: 20px 12px; font-size: 1.2rem; }
+  .back-button { margin: 0; padding: 12px; font-size: 1.05rem; }
+}
