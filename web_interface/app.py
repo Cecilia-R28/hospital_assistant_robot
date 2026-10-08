@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request
 
-from catalog import CATALOG
+from catalog import CATALOG, INFO_DISCLAIMER
 from requests_model import build_request
 
 app = Flask(__name__)
@@ -18,7 +18,15 @@ def api_request():
         structured = build_request(data.get("category"), data.get("item"))
     except ValueError as err:
         return jsonify({"ok": False, "error": str(err)}), 400
-    return jsonify({"ok": True, "request": structured})
+    entry = CATALOG[data["category"]]
+    item = entry["items"][data["item"]]
+    if "info" in item:
+        title = item["label"]
+        message = item["info"] + "\n\n" + INFO_DISCLAIMER
+    else:
+        title = "Votre choix"
+        message = entry["confirm"].format(label=item["label"])
+    return jsonify({"ok": True, "request": structured, "title": title, "message": message})
 
 
 if __name__ == "__main__":

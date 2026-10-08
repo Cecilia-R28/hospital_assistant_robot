@@ -1,3 +1,4 @@
+const DEBUG = new URLSearchParams(location.search).has("debug");
 let lastMenu = "home";
 
 function show(id) {
@@ -40,7 +41,7 @@ document.querySelectorAll("[data-item]").forEach(btn => {
       });
       const data = await response.json();
       if (data.ok) {
-        showConfirm("Votre choix", label, JSON.stringify(data.request));
+        showConfirm(data.title, data.message, DEBUG ? JSON.stringify(data.request) : "");
       } else {
         showConfirm("Erreur", data.error);
       }

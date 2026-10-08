@@ -40,3 +40,9 @@ h2 { font-size: 1.8rem; margin: 8px 0 24px; }
   .big-button { margin: 0; padding: 20px 12px; font-size: 1.2rem; }
   .back-button { margin: 0; padding: 12px; font-size: 1.05rem; }
 }
+
+/* Textes d'information : retours à la ligne et défilement si trop long */
+#confirm-text { white-space: pre-line; line-height: 1.4; }
+@media (orientation: landscape) and (max-height: 600px) {
+  #confirm-text { font-size: 1rem; max-height: 45vh; overflow-y: auto; }
+}

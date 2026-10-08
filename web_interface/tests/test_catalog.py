@@ -39,3 +39,13 @@ def test_unknown_category_is_rejected():
 def test_unknown_item_is_rejected():
     with pytest.raises(ValueError):
         build_request("ORIENTATION", "CAFETERIA")
+
+
+def test_information_items_have_text():
+    for item in CATALOG["INFORMATION"]["items"].values():
+        assert item["info"].strip()
+
+
+def test_every_category_has_confirm_message():
+    for entry in CATALOG.values():
+        assert "{label}" in entry["confirm"]
