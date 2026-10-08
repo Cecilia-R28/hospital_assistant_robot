@@ -27,6 +27,8 @@ setup(
             'robot_status = hospital_robot.robot_status_node:main',
             'robot_supervisor = hospital_robot.robot_supervisor:main',
             'esp32_interface = hospital_robot.esp32_interface_node:main',
+            'obstacle_detector = hospital_robot.obstacle_detector_node:main',
+            'navigation_decision = hospital_robot.navigation_decision_node:main',
         ],
     },
 )
