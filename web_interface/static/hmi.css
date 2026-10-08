@@ -8,3 +8,14 @@ h1 { font-size: 2.2rem; margin: 8px 0; }
   background: #1f6feb; color: white;
 }
 .big-button:active { background: #1558c0; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+h2 { font-size: 1.8rem; margin: 8px 0 24px; }
+.big-button.unavailable { background: #8a94a6; }
+.back-button {
+  display: block; width: 100%; margin: 12px 0; padding: 18px;
+  font-size: 1.2rem; border: 2px solid #1f6feb; border-radius: 16px;
+  background: white; color: #1f6feb;
+}
+.debug { font-family: monospace; font-size: 0.9rem; color: #777; word-break: break-all; }

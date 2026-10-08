@@ -8,11 +8,37 @@
 </head>
 <body>
   <main>
-    <h1>HIAR 🤖</h1>
-    <p class="subtitle">Que puis-je faire pour vous ?</p>
+
+    <section id="home" class="screen active">
+      <h1>HIAR 🤖</h1>
+      <p class="subtitle">Que puis-je faire pour vous ?</p>
+      {% for key, cat in catalog.items() %}
+        <button class="big-button" data-goto="menu-{{ key }}">{{ cat.icon }} {{ cat.label }}</button>
+      {% endfor %}
+    </section>
+
     {% for key, cat in catalog.items() %}
-      <button class="big-button" data-category="{{ key }}">{{ cat.icon }} {{ cat.label }}</button>
+    <section id="menu-{{ key }}" class="screen">
+      <h2>{{ cat.icon }} {{ cat.label }}</h2>
+      {% for item_key, item in cat["items"].items() %}
+        <button class="big-button{% if not item.available %} unavailable{% endif %}"
+                data-category="{{ key }}" data-item="{{ item_key }}"
+                data-label="{{ item.label }}"
+                data-available="{{ 'true' if item.available else 'false' }}">{{ item.icon or '' }} {{ item.label }}</button>
+      {% endfor %}
+      <button class="back-button" data-goto="home">← Retour</button>
+    </section>
     {% endfor %}
+
+    <section id="confirm" class="screen">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text" class="subtitle"></p>
+      <p id="confirm-debug" class="debug"></p>
+      <button class="back-button" id="confirm-back">← Retour</button>
+      <button class="back-button" data-goto="home">Annuler</button>
+    </section>
+
   </main>
+  <script src="{{ url_for('static', filename='hmi.js') }}"></script>
 </body>
 </html>
