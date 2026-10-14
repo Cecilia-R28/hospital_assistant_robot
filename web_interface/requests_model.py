@@ -14,4 +14,6 @@ def build_request(category, item):
     entry = CATALOG[category]
     if item not in entry["items"]:
         raise ValueError(f"Élément inconnu pour {category} : {item}")
+    if not entry["items"][item].get("available", False):
+        raise ValueError(f"Élément indisponible pour {category} : {item}")
     return {"category": category, entry["field"]: item}

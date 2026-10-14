@@ -42,14 +42,25 @@ class RosBridge:
             return False
 
     def publish(self, request_dict):
-        """Publie la demande (JSON). Retourne True si elle a été publiée."""
+        """Publie la demande (JSON).
+
+        Retourne True si l'appel de publication réussit, False sinon.
+        Cela ne garantit pas la réception ou l'exécution par le robot.
+        """
         if not self.active:
+            self.error = "Pont ROS2 inactif"
             return False
-        message = String()
-        message.data = json.dumps(request_dict, ensure_ascii=False)
-        with self._lock:
-            self._publisher.publish(message)
-        return True
+
+        try:
+            message = String()
+            message.data = json.dumps(request_dict, ensure_ascii=False)
+            with self._lock:
+                self._publisher.publish(message)
+            self.error = None
+            return True
+        except Exception as err:
+            self.error = str(err)
+            return False
 
     def stop(self):
         if self._node is not None:

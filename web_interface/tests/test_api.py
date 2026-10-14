@@ -1,4 +1,12 @@
+import app as app_module
 from app import app
+
+
+class FakeBridge:
+    error = None
+
+    def publish(self, request_dict):
+        return True
 
 
 def test_home_page_returns_200():
@@ -7,7 +15,8 @@ def test_home_page_returns_200():
     assert response.status_code == 200
 
 
-def test_valid_orientation_request():
+def test_valid_orientation_request(monkeypatch):
+    monkeypatch.setattr(app_module, "bridge", FakeBridge())
     client = app.test_client()
     response = client.post(
         "/api/request",
@@ -22,7 +31,8 @@ def test_valid_orientation_request():
     }
 
 
-def test_information_response_has_title_and_disclaimer():
+def test_information_response_has_title_and_disclaimer(monkeypatch):
+    monkeypatch.setattr(app_module, "bridge", FakeBridge())
     client = app.test_client()
     response = client.post(
         "/api/request",

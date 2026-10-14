@@ -29,8 +29,17 @@ def api_request():
         title = "Votre choix"
         message = entry["confirm"].format(label=item["label"])
     published = bridge.publish(structured)
-    return jsonify({"ok": True, "request": structured, "title": title,
-                    "message": message, "published": published})
+    response = {
+        "ok": published,
+        "request": structured,
+        "title": title,
+        "message": message,
+        "published": published,
+    }
+    if not published:
+        response["error"] = bridge.error or "Échec de publication ROS2"
+        return jsonify(response), 503
+    return jsonify(response), 200
 
 
 if __name__ == "__main__":

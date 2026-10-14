@@ -16,6 +16,11 @@ def test_vital_signs_not_available_yet():
     assert CATALOG["CONSULTATION"]["items"]["VITAL_SIGNS"]["available"] is False
 
 
+def test_build_request_rejects_unavailable_item():
+    with pytest.raises(ValueError, match="indisponible"):
+        build_request("CONSULTATION", "VITAL_SIGNS")
+
+
 def test_build_destination_request():
     assert build_request("ORIENTATION", "PHARMACY") == {
         "category": "ORIENTATION", "destination": "PHARMACY"}
