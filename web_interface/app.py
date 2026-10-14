@@ -2,8 +2,10 @@ from flask import Flask, jsonify, render_template, request
 
 from catalog import CATALOG, INFO_DISCLAIMER
 from requests_model import build_request
+from ros_bridge import RosBridge
 
 app = Flask(__name__)
+bridge = RosBridge()
 
 
 @app.route("/")
@@ -26,8 +28,17 @@ def api_request():
     else:
         title = "Votre choix"
         message = entry["confirm"].format(label=item["label"])
-    return jsonify({"ok": True, "request": structured, "title": title, "message": message})
+    published = bridge.publish(structured)
+    return jsonify({"ok": True, "request": structured, "title": title,
+                    "message": message, "published": published})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    if bridge.start():
+        print("Pont ROS2 actif : demandes publiées sur /hmi/request")
+    else:
+        print("Pont ROS2 inactif : " + str(bridge.error))
+    try:
+        app.run(host="0.0.0.0", port=5000)
+    finally:
+        bridge.stop()
