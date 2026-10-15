@@ -209,3 +209,89 @@ Ne pas ajouter de fonctionnalités optionnelles avant que le scénario principal
 - Ne déclarer une étape terminée que lorsque sa preuve a été observée.
 
 **Prochaine action :** vérifier le contenu du checkpoint, puis examiner l'état Git avant d'enregistrer les dossiers `docs/` et `firmware/`.
+
+---
+
+## Mise à jour — 15 octobre 2026
+
+### Intégration ROS 2 V0.8 + HMI V1.0
+
+La branche `integration/v1.0-robot` contient maintenant la fusion de
+`feature/v0.8-navigation` et les améliorations HMI V1.0.
+
+La fusion a été compilée avec succès. Les six exécutables ROS 2 suivants
+ont été reconnus :
+- `robot_status`
+- `robot_supervisor`
+- `esp32_interface`
+- `obstacle_detector`
+- `navigation_decision`
+- `hmi_request_receiver`
+
+### Récepteur HMI V1.0
+
+Fichiers ajoutés :
+- `src/hospital_robot/hospital_robot/hmi_request_node.py`
+- `src/hospital_robot/test/test_hmi_request_node.py`
+
+`setup.py` déclare l'exécutable `hmi_request_receiver`.
+
+Le nœud :
+- écoute `/hmi/request` (`std_msgs/msg/String` contenant un JSON) ;
+- valide la catégorie et les champs attendus ;
+- rejette les demandes mal formées, les destinations inconnues et les services non autorisés ;
+- publie le résultat sur `/hmi/status` ;
+- ne commande pas directement les moteurs et ne démarre pas la navigation.
+
+Résultats observés :
+- demande Pharmacie : `VALIDATED:ORIENTATION:PHARMACY` ;
+- destination inconnue `CAFETERIA` : `REJECTED:UNKNOWN_OR_UNAVAILABLE_ITEM` ;
+- les deux statuts ont été observés sur `/hmi/status`.
+
+### Tests après intégration
+
+- Compilation `colcon build --packages-select hospital_robot` : réussie.
+- Tests ROS 2 depuis `src/hospital_robot` : `7 passed, 1 skipped`.
+- Tests HMI depuis `web_interface` : `22 passed`.
+- Tests spécifiques du récepteur : `5 passed`.
+- `git diff --check` : aucune erreur signalée lors de la vérification.
+
+Le passage des tests ne prouve pas encore le fonctionnement physique du robot.
+Le test général lancé depuis la racine du dépôt a précédemment inspecté des
+répertoires générés (`build/`, `install/`) et d'autres dossiers. Le périmètre
+de lint devra être clarifié séparément.
+
+### Sauvegarde Git
+
+Le commit `2644660` (`feat(ros2): add validated HMI request receiver`) a été
+poussé sur `origin/integration/v1.0-robot`.
+
+Le firmware ESP32 a été sauvegardé précédemment dans :
+`firmware/esp32/HIAR_ESP32_Test/HIAR_ESP32_Test.ino`
+
+Le fichier original sur le disque E: a été conservé.
+
+`docs/PROMPTS.md` reste non suivi par Git et contient uniquement des espaces
+lors du dernier contrôle. Ne pas le supprimer sans décision explicite.
+
+### Limite fonctionnelle restante
+
+Le récepteur HMI valide et rapporte les demandes, mais ne transmet pas encore
+une demande d'orientation à la navigation.
+
+La navigation V0.8 sait réagir aux obstacles avec le HC-SR04 et les deux IR.
+Aucun mécanisme de localisation ou de confirmation d'arrivée à une destination
+n'a été démontré. Ne pas lancer automatiquement `START` à la réception d'une
+demande Pharmacie.
+
+Avant toute commande de déplacement issue du HMI :
+1. définir le comportement de navigation réellement réalisable ;
+2. préserver le passage des commandes par le Supervisor ;
+3. définir une condition d'arrêt et les limites de sécurité ;
+4. tester d'abord sans moteurs, puis effectuer des essais physiques contrôlés.
+
+### Prochaine action
+
+Définir et tester le contrat entre le récepteur HMI et la navigation sans
+déclencher de mouvement moteur. Garder les branches originales préservées
+et vérifier `git status` avant chaque commit.
