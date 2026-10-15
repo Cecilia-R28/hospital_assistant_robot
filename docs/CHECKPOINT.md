@@ -276,8 +276,13 @@ lors du dernier contrôle. Ne pas le supprimer sans décision explicite.
 
 ### Limite fonctionnelle restante
 
-Le récepteur HMI valide et rapporte les demandes, mais ne transmet pas encore
-une demande d'orientation à la navigation.
+Le récepteur HMI valide les demandes d'orientation et publie le JSON sur
+`/navigation/request`. Le 15 octobre 2026, une demande Pharmacie a été
+observée sur ce topic pendant un test ROS 2 réel.
+
+Aucun nœud de navigation ne consomme encore `/navigation/request` pour
+guider le robot vers une destination. La publication de la demande ne
+prouve pas qu'un déplacement est effectué.
 
 La navigation V0.8 sait réagir aux obstacles avec le HC-SR04 et les deux IR.
 Aucun mécanisme de localisation ou de confirmation d'arrivée à une destination
