@@ -81,3 +81,26 @@ def test_unexpected_field_is_rejected(receiver):
     )
 
     assert statuses == ["REJECTED:INVALID_FIELDS"]
+
+
+def test_valid_orientation_is_forwarded_to_navigation_request(
+    receiver, monkeypatch
+):
+    node, statuses = receiver
+    navigation_requests = []
+
+    monkeypatch.setattr(
+        node,
+        "publish_navigation_request",
+        navigation_requests.append,
+    )
+
+    send_request(
+        node,
+        '{"category": "ORIENTATION", "destination": "PHARMACY"}',
+    )
+
+    assert navigation_requests == [
+        {"category": "ORIENTATION", "destination": "PHARMACY"}
+    ]
+    assert statuses == ["VALIDATED:ORIENTATION:PHARMACY"]

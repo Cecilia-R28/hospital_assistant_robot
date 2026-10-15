@@ -35,6 +35,13 @@ class HMIRequestReceiver(Node):
             10,
         )
 
+        # Canal de demande d'orientation ; ne commande pas les moteurs.
+        self.navigation_request_publisher = self.create_publisher(
+            String,
+            "/navigation/request",
+            10,
+        )
+
         self.request_subscription = self.create_subscription(
             String,
             "/hmi/request",
@@ -50,6 +57,12 @@ class HMIRequestReceiver(Node):
         message = String()
         message.data = status
         self.status_publisher.publish(message)
+
+    def publish_navigation_request(self, request):
+        """Publie une demande d'orientation validée, sans lancer le robot."""
+        message = String()
+        message.data = json.dumps(request, separators=(",", ":"))
+        self.navigation_request_publisher.publish(message)
 
     def reject(self, reason):
         self.get_logger().warning(f"HMI request rejected: {reason}")
@@ -92,9 +105,17 @@ class HMIRequestReceiver(Node):
             self.reject("UNKNOWN_OR_UNAVAILABLE_ITEM")
             return
 
+        normalized_request = {"category": category, field: item}
+
+        if category == "ORIENTATION":
+            self.publish_navigation_request(normalized_request)
+            self.get_logger().info(
+                "Orientation request published on /navigation/request. "
+                "No movement command has been issued."
+            )
+
         self.get_logger().info(
-            f"Validated HMI request: category={category}, {field}={item}. "
-            "Navigation has not been started."
+            f"Validated HMI request: category={category}, {field}={item}."
         )
         self.publish_status(f"VALIDATED:{category}:{item}")
 
