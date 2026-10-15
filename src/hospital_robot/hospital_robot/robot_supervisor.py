@@ -1,18 +1,7 @@
-from enum import Enum
-
 import rclpy
 from rclpy.node import Node
+
 from std_msgs.msg import String
-
-
-class RobotState(Enum):
-    IDLE = 'IDLE'
-    WAITING = 'WAITING'
-    NAVIGATING = 'NAVIGATING'
-    ARRIVED = 'ARRIVED'
-    OBSTACLE = 'OBSTACLE'
-    EMERGENCY_STOP = 'EMERGENCY_STOP'
-    ERROR = 'ERROR'
 
 
 class RobotSupervisor(Node):
@@ -20,17 +9,11 @@ class RobotSupervisor(Node):
     def __init__(self):
         super().__init__('robot_supervisor')
 
-        self.current_state = RobotState.IDLE
+        self.current_state = 'IDLE'
+        self.obstacle_state = 'CLEAR'
+        self.current_command = 'STOP'
 
-        # Reçoit l'état réel du robot
-        self.status_subscription = self.create_subscription(
-            String,
-            '/robot/status',
-            self.status_callback,
-            10
-        )
-
-        # Reçoit les commandes du système
+        # Commandes demandées par le système
         self.command_subscription = self.create_subscription(
             String,
             '/robot/command',
@@ -38,140 +21,144 @@ class RobotSupervisor(Node):
             10
         )
 
-        self.get_logger().info(
-            'HIAR Robot Supervisor started'
+        # État de perception
+        self.obstacle_subscription = self.create_subscription(
+            String,
+            '/sensors/obstacle',
+            self.obstacle_callback,
+            10
+        )
+
+        # Commandes réellement envoyées à l'ESP32
+        self.motor_command_publisher = self.create_publisher(
+            String,
+            '/robot/motor_command',
+            10
+        )
+
+        # État du robot
+        self.status_publisher = self.create_publisher(
+            String,
+            '/robot/status',
+            10
         )
 
         self.get_logger().info(
-            f'Initial state: {self.current_state.value}'
+            'Robot supervisor started.'
         )
+
+        self.publish_status()
 
     def command_callback(self, message):
 
         command = message.data.strip().upper()
 
-        self.get_logger().info(
-            f'Received command: {command}'
-        )
-
-        # Commandes de déplacement
-        movement_commands = {
+        allowed_commands = [
             'FORWARD',
             'BACKWARD',
             'LEFT',
-            'RIGHT'
-        }
+            'RIGHT',
+            'STOP'
+        ]
 
-        if command in movement_commands:
+        if command not in allowed_commands:
 
-            # On ne lance pas un mouvement si le robot
-            # est en arrêt d'urgence ou en erreur.
-            if self.current_state in (
-                RobotState.EMERGENCY_STOP,
-                RobotState.ERROR
-            ):
-                self.get_logger().warn(
-                    f'Command {command} rejected because '
-                    f'robot state is {self.current_state.value}'
-                )
-                return
-
-            self.current_state = RobotState.NAVIGATING
-
-            self.get_logger().info(
-                f'Robot state changed to: '
-                f'{self.current_state.value}'
+            self.get_logger().warning(
+                f'Invalid command rejected: {command}'
             )
 
-        elif command == 'STOP':
+            return
 
-            self.current_state = RobotState.IDLE
+        # Sécurité : FORWARD interdit si obstacle
+        if (
+            command == 'FORWARD'
+            and self.obstacle_state == 'OBSTACLE'
+        ):
 
-            self.get_logger().info(
-                'STOP command received.'
+            self.get_logger().warning(
+                'FORWARD rejected: obstacle detected.'
             )
 
-            self.get_logger().info(
-                f'Robot state changed to: '
-                f'{self.current_state.value}'
-            )
+            self.send_stop()
+            return
+
+        self.current_command = command
+
+        if command == 'STOP':
+            self.current_state = 'IDLE'
 
         else:
+            self.current_state = 'NAVIGATING'
 
-            self.get_logger().warn(
-                f'Unknown command: {command}'
-            )
-
-    def status_callback(self, message):
-
-        status = message.data
+        self.send_motor_command(command)
+        self.publish_status()
 
         self.get_logger().info(
-            f'Received robot status: {status}'
+            f'Command accepted: {command}'
         )
 
-        if status == RobotState.IDLE.value:
+    def obstacle_callback(self, message):
 
-            self.current_state = RobotState.IDLE
+        obstacle_state = message.data.strip().upper()
 
-            self.get_logger().info(
-                'Robot is ready and waiting for a task.'
+        if obstacle_state not in [
+            'CLEAR',
+            'OBSTACLE'
+        ]:
+
+            self.get_logger().warning(
+                f'Invalid obstacle state: {obstacle_state}'
             )
 
-        elif status == RobotState.WAITING.value:
+            return
 
-            self.current_state = RobotState.WAITING
+        self.obstacle_state = obstacle_state
 
-            self.get_logger().info(
-                'Robot is waiting for an instruction.'
+        self.get_logger().info(
+            f'Obstacle state: {obstacle_state}'
+        )
+
+        # Arrêt automatique si obstacle pendant FORWARD
+        if (
+            obstacle_state == 'OBSTACLE'
+            and self.current_command == 'FORWARD'
+        ):
+
+            self.get_logger().warning(
+                'Obstacle detected during FORWARD.'
             )
 
-        elif status == RobotState.NAVIGATING.value:
+            self.send_stop()
 
-            self.current_state = RobotState.NAVIGATING
+    def send_motor_command(self, command):
 
-            self.get_logger().info(
-                'Robot is navigating.'
-            )
+        message = String()
+        message.data = command
 
-        elif status == RobotState.ARRIVED.value:
+        self.motor_command_publisher.publish(message)
 
-            self.current_state = RobotState.ARRIVED
+        self.get_logger().info(
+            f'Motor command published: {command}'
+        )
 
-            self.get_logger().info(
-                'Robot has arrived at the destination.'
-            )
+    def send_stop(self):
 
-        elif status == RobotState.OBSTACLE.value:
+        self.current_command = 'STOP'
+        self.current_state = 'IDLE'
 
-            self.current_state = RobotState.OBSTACLE
+        self.send_motor_command('STOP')
+        self.publish_status()
 
-            self.get_logger().warn(
-                'Obstacle detected! '
-                'Robot must stop or avoid it.'
-            )
+        self.get_logger().warning(
+            'STOP command published.'
+        )
 
-        elif status == RobotState.EMERGENCY_STOP.value:
+    def publish_status(self):
 
-            self.current_state = RobotState.EMERGENCY_STOP
+        message = String()
+        message.data = self.current_state
 
-            self.get_logger().error(
-                'EMERGENCY STOP activated!'
-            )
-
-        elif status == RobotState.ERROR.value:
-
-            self.current_state = RobotState.ERROR
-
-            self.get_logger().error(
-                'Robot entered ERROR state.'
-            )
-
-        else:
-
-            self.get_logger().warn(
-                f'Unknown robot status: {status}'
-            )
+        self.status_publisher.publish(message)
 
 
 def main(args=None):
@@ -181,12 +168,18 @@ def main(args=None):
     node = RobotSupervisor()
 
     try:
+
         rclpy.spin(node)
 
     except KeyboardInterrupt:
-        pass
+
+        node.get_logger().info(
+            'Robot supervisor stopped by user.'
+        )
 
     finally:
+
+        node.send_stop()
         node.destroy_node()
 
         if rclpy.ok():
