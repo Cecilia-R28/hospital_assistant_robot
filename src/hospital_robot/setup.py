@@ -29,6 +29,7 @@ setup(
             'esp32_interface = hospital_robot.esp32_interface_node:main',
             'obstacle_detector = hospital_robot.obstacle_detector_node:main',
             'navigation_decision = hospital_robot.navigation_decision_node:main',
+            'hmi_request_receiver = hospital_robot.hmi_request_node:main',
         ],
     },
 )
