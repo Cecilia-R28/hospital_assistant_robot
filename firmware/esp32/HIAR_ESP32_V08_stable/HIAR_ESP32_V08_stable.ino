@@ -39,6 +39,10 @@ enum MotionMode {
   MODE_RIGHT
 };
 
+// Déclarations anticipées
+void requestMotion(MotionMode mode);
+void applyMotion(MotionMode mode);
+
 // ============================================
 // MOTEUR A — GAUCHE
 // ============================================
@@ -95,6 +99,11 @@ const float OBSTACLE_STOP_CM = 20.0f;
 const int MAX_INVALID_READS = 3;
 const unsigned long GUARD_INTERVAL = 60;
 const unsigned long REVERSE_PAUSE_MS = 150;
+
+// ============================================
+// MODE AUTONOME (désactivé par défaut)
+// ============================================
+bool autoMode = false;
 
 // ============================================
 // RÉCEPTION SÉRIE
@@ -320,6 +329,12 @@ void updateForwardGuard() {
     } else {
       invalidCount = 0;
       Serial.printf("DIST,%.1f\n", filtered);
+
+      // CORRECTION 2 : arrêt local sur obstacle pendant FORWARD
+      if (motionMode == MODE_FORWARD && filtered < OBSTACLE_STOP_CM) {
+        setMotion(MODE_IDLE);
+        Serial.printf("SAFETY,OBSTACLE,%.1f\n", filtered);
+      }
     }
   }
 
@@ -358,6 +373,10 @@ void publishIrStates() {
 // DÉCISION AUTONOME (ajouté)
 // ============================================
 void decideAutonomousMotion() {
+  // CORRECTION 1 : sans AUTO_ON, le robot ne décide jamais seul
+  if (!autoMode)
+    return;
+
   // On attend d'avoir au moins une mesure valide
   if (lastFilteredDistance < 0)
     return;
@@ -489,6 +508,18 @@ void processCommand(const char* raw) {
   else if (strcmp(cmd, "RIGHT") == 0) {
     requestMotion(MODE_RIGHT);
     Serial.printf("ACK,RIGHT,%d\n", MOTOR_SPEED_PERCENT);
+    return;
+  }
+  // CORRECTION 3 : commandes de test du mode autonome
+  else if (strcmp(cmd, "AUTO_ON") == 0) {
+    autoMode = true;
+    Serial.println("ACK,AUTO_ON");
+    return;
+  }
+  else if (strcmp(cmd, "AUTO_OFF") == 0) {
+    autoMode = false;
+    setMotion(MODE_IDLE);
+    Serial.println("ACK,AUTO_OFF");
     return;
   }
   else {
