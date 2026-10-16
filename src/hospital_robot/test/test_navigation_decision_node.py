@@ -123,3 +123,19 @@ def test_invalid_navigation_request_json_is_rejected():
     node.send.assert_not_called()
     node.publish_text.assert_not_called()
     node.get_logger().warning.assert_called_once()
+
+
+def test_decide_treats_exactly_20_cm_as_clear():
+    node = make_node("DECIDE")
+    node.center_distance = 20.0
+
+    assert NavigationDecision.decide(node) == "FORWARD"
+
+
+def test_decide_treats_just_under_20_cm_as_blocked():
+    node = make_node("DECIDE")
+    node.center_distance = 19.9
+    node.ir_left_state = 0
+    node.ir_right_state = 0
+
+    assert NavigationDecision.decide(node) == "STOP"

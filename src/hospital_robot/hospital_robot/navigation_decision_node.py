@@ -519,7 +519,7 @@ class NavigationDecision(Node):
         # DEVANT LIBRE
         # ----------------------------------------------------
 
-        if center > OBSTACLE_CM:
+        if center >= OBSTACLE_CM:
 
             return 'FORWARD'
 
@@ -626,7 +626,7 @@ class NavigationDecision(Node):
             # Obstacle frontal
             # ------------------------------------------------
 
-            if self.center_distance <= OBSTACLE_CM:
+            if self.center_distance < OBSTACLE_CM:
 
                 self.send('STOP')
 
