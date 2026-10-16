@@ -1,4 +1,6 @@
 
+import json
+
 import rclpy
 from rclpy.node import Node
 
@@ -52,6 +54,7 @@ class NavigationDecision(Node):
         # ----------------------------------------------------
 
         self.state = 'IDLE'
+        self.destination = None
 
         # Moment où l'état courant a commencé
         self.state_start_time = self.now()
@@ -141,6 +144,14 @@ class NavigationDecision(Node):
             10
         )
 
+        # Demandes de destination validées par le récepteur HMI.
+        self.create_subscription(
+            String,
+            '/navigation/request',
+            self.navigation_request_callback,
+            10
+        )
+
         # ----------------------------------------------------
         # Publications
         # ----------------------------------------------------
@@ -213,6 +224,45 @@ class NavigationDecision(Node):
         message.data = text
 
         publisher.publish(message)
+
+    # ========================================================
+    # DEMANDE DE DESTINATION HMI
+    # ========================================================
+
+    def navigation_request_callback(self, message):
+
+        try:
+            request = json.loads(message.data)
+        except (json.JSONDecodeError, TypeError):
+            self.get_logger().warning(
+                'Invalid navigation request JSON rejected.'
+            )
+            return
+
+        if (
+            not isinstance(request, dict)
+            or set(request.keys()) != {'category', 'destination'}
+            or request.get('category') != 'ORIENTATION'
+            or request.get('destination') not in {
+                'PHARMACY', 'LABORATORY', 'RECEPTION'
+            }
+        ):
+            self.get_logger().warning(
+                'Invalid navigation destination request rejected.'
+            )
+            return
+
+        self.destination = request['destination']
+
+        self.publish_text(
+            self.status_publisher,
+            f'REQUEST_RECEIVED:{self.destination}'
+        )
+
+        self.get_logger().info(
+            f'Destination received: {self.destination}. '
+            'No movement command issued.'
+        )
 
     # ========================================================
     # CHANGEMENT D'ÉTAT
@@ -523,6 +573,23 @@ class NavigationDecision(Node):
         current_time = self.now()
 
         # ====================================================
+        # BLOCKED
+        # ====================================================
+
+        if self.state == 'BLOCKED':
+
+            # Ne pas reprendre le mouvement avec des capteurs périmés.
+            if not self.sensors_ready():
+                return
+
+            # Si une direction devient sûre, refaire une décision
+            # dans l'état DECIDE au prochain cycle.
+            if self.decide() != 'STOP':
+                self.change_state('DECIDE')
+
+            return
+
+        # ====================================================
         # FORWARD
         # ====================================================
 
@@ -694,6 +761,8 @@ class NavigationDecision(Node):
                     'Robot blocked: '
                     'LEFT and RIGHT obstacles.'
                 )
+
+                self.change_state('BLOCKED')
 
                 return
 
